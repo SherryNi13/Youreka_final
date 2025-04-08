@@ -3,6 +3,7 @@ import seaborn as sns
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import streamlit as st
+import statsmodels.api as sm
 
 # Function to load the merged dataset from the GitHub repository (ensure the file is in the same directory as the script or provide the path)
 @st.cache
@@ -61,3 +62,25 @@ st.pyplot(fig2)
 # Show a dataframe of the merged data (optional)
 st.subheader("Merged Data Sample")
 st.dataframe(df_merged.head())
+
+# Define the predictor variables and target variable
+X = analysis_df[["TAVG", "PRCP"]]
+y = analysis_df["Coccidioidomycosis, Cum Current Year"]
+
+# Add constant for intercept
+X = sm.add_constant(X)
+
+# Build the OLS regression model
+model = sm.OLS(y, X).fit()
+
+# Get the regression summary
+model_summary = model.summary()
+
+# Extract the regression equation
+intercept = model.params['const']
+coef_tavg = model.params['TAVG']
+coef_prcp = model.params['PRCP']
+
+equation = f"Cases = {intercept:.3f} + ({coef_tavg:.3f} × TAVG) + ({coef_prcp:.3f} × PRCP) + ε"
+
+model_summary, equation
