@@ -1,3 +1,4 @@
+import streamlit as st
 import pandas as pd
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
@@ -48,25 +49,29 @@ coef_prcp = model.params['PRCP']
 # Create regression equation string
 equation = f"Cases = {intercept:.3f} + ({coef_tavg:.3f} × TAVG) + ({coef_prcp:.3f} × PRCP) + ε"
 
-# Print the equation and regression summary
-print("Regression Equation:")
-print(equation)
-print(model.summary())
+# Streamlit display
+st.title("Regression Analysis of Coccidioidomycosis Cases")
+
+st.write("## Regression Equation")
+st.write(equation)
+
+st.write("## Regression Summary")
+st.text(model.summary())
 
 # Plotting the regression line graph for TAVG vs Coccidioidomycosis
-plt.figure(figsize=(10,6))
+fig, ax = plt.subplots(figsize=(10, 6))
 
 # Scatter plot of actual vs predicted cases
-plt.scatter(analysis_df["TAVG"], y, color='blue', label="Actual cases")
-plt.plot(analysis_df["TAVG"], model.fittedvalues, color='red', label="Regression line")
+ax.scatter(analysis_df["TAVG"], y, color='blue', label="Actual cases")
+ax.plot(analysis_df["TAVG"], model.fittedvalues, color='red', label="Regression line")
 
 # Labels and title
-plt.xlabel("Average Temperature (TAVG)", fontsize=12)
-plt.ylabel("Coccidioidomycosis Cumulative Cases", fontsize=12)
-plt.title("Regression Line: TAVG vs Coccidioidomycosis", fontsize=14)
+ax.set_xlabel("Average Temperature (TAVG)", fontsize=12)
+ax.set_ylabel("Coccidioidomycosis Cumulative Cases", fontsize=12)
+ax.set_title("Regression Line: TAVG vs Coccidioidomycosis", fontsize=14)
 
-# Show legend and plot
-plt.legend()
-plt.show()
+# Show legend
+ax.legend()
 
-
+# Display the plot
+st.pyplot(fig)
