@@ -1,86 +1,71 @@
 import pandas as pd
-import seaborn as sns
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
-import streamlit as st
-import statsmodels.api as sm
+from scipy.stats import pearsonr
 
-# Function to load the merged dataset from the GitHub repository (ensure the file is in the same directory as the script or provide the path)
-@st.cache
-def load_data():
-    # Load the CSV file from the repository (ensure it's in the correct directory or path)
-    df = pd.read_csv("Coccidioidomycosis_Regression_Analysis.csv")
-    return df
+# Load the cleaned disease and climate data
+disease_data_path = "Coccidioidomycosis_Data_2014-2022.xlsx"
+climate_data_path = "New climate data.xlsx"
 
-# Load the data
-df_merged = load_data()
+# Load datasets
+disease_df = pd.read_excel(disease_data_path)
+climate_df = pd.read_excel(climate_data_path)
 
-# Perform the regression analysis: TAVG, PRCP vs Coccidioidomycosis (Previous 52 Weeks Max)
-X = df_merged[['TAVG', 'PRCP']]  # Independent variables
-y = df_merged['Coccidioidomycosis, Previous 52 weeks Max†']  # Dependent variable
+# Aggregate disease data by Reporting Area and MMWR Year (mean for duplicates)
+disease_df_grouped = disease_df.groupby(["Reporting Area", "MMWR Year"], as_index=False).mean(numeric_only=True)
 
-# Add constant to the model (intercept)
-X = sm.add_constant(X)
+# Standardize state names (uppercase) for both datasets
+disease_df_grouped["Reporting Area"] = disease_df_grouped["Reporting Area"].str.upper()
+climate_df["Reporting Area"] = climate_df["Reporting Area"].str.upper()
 
-# Fit the model
-model = sm.OLS(y, X).fit()
+# Merge datasets on Reporting Area and MMWR Year
+merged_df = pd.merge(disease_df_grouped, climate_df, on=["Reporting Area", "MMWR Year"], how="inner")
 
-# Get the summary of the regression model
-model_summary = model.summary()
+# Drop unnecessary columns from climate data
+merged_df = merged_df[[
+    "Reporting Area", "MMWR Year",
+    "Coccidioidomycosis, Cum Current Year",
+    "Coccidioidomycosis, Cum Previous Year",
+    "TAVG", "PRCP"
+]]
 
-# Streamlit UI
-st.title("Coccidioidomycosis and Climate Analysis")
-st.markdown("""
-This app performs regression analysis on Coccidioidomycosis cases, 
-considering temperature (TAVG) and precipitation (PRCP) from 2014 to 2022.
-""")
-
-# Show the regression results summary
-st.subheader("Regression Analysis Summary")
-st.text(model_summary)
-
-# Plot the regression line for TAVG vs Coccidioidomycosis
-st.subheader('Regression Line: Temperature vs Coccidioidomycosis')
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.regplot(x='TAVG', y='Coccidioidomycosis, Previous 52 weeks Max†', data=df_merged, ax=ax, scatter_kws={'color': 'blue'}, line_kws={'color': 'red'})
-ax.set_title('Regression Line: Temperature vs Coccidioidomycosis (Previous 52 Weeks Max)', fontsize=14)
-ax.set_xlabel('Average Temperature (TAVG)', fontsize=12)
-ax.set_ylabel('Coccidioidomycosis (Previous 52 Weeks Max)', fontsize=12)
-st.pyplot(fig)
-
-# Plot the p-values for TAVG and PRCP
-st.subheader('P-Values for TAVG and PRCP')
-p_values = {'TAVG': model.pvalues['TAVG'], 'PRCP': model.pvalues['PRCP']}
-p_values_df = pd.DataFrame(list(p_values.items()), columns=['Variable', 'P-Value'])
-
-fig2, ax2 = plt.subplots(figsize=(8, 6))
-sns.barplot(x='Variable', y='P-Value', data=p_values_df, ax=ax2)
-ax2.set_title('P-Value for TAVG and PRCP', fontsize=14)
-ax2.set_ylabel('P-Value', fontsize=12)
-st.pyplot(fig2)
-
-# Show a dataframe of the merged data (optional)
-st.subheader("Merged Data Sample")
-st.dataframe(df_merged.head())
-
-# Define the predictor variables and target variable
-X = analysis_df[["TAVG", "PRCP"]]
-y = analysis_df["Coccidioidomycosis, Cum Current Year"]
-
-# Add constant for intercept
-X = sm.add_constant(X)
+# Drop rows with missing values for analysis
+analysis_df = merged_df.dropna(subset=[
+    "Coccidioidomycosis, Cum Current Year", "TAVG", "PRCP"
+])
 
 # Build the OLS regression model
+X = analysis_df[["TAVG", "PRCP"]]
+y = analysis_df["Coccidioidomycosis, Cum Current Year"]
+X = sm.add_constant(X)
 model = sm.OLS(y, X).fit()
 
-# Get the regression summary
-model_summary = model.summary()
-
-# Extract the regression equation
+# Extract regression results
 intercept = model.params['const']
 coef_tavg = model.params['TAVG']
 coef_prcp = model.params['PRCP']
 
+# Create regression equation string
 equation = f"Cases = {intercept:.3f} + ({coef_tavg:.3f} × TAVG) + ({coef_prcp:.3f} × PRCP) + ε"
 
-model_summary, equation
+# Print the equation and regression summary
+print("Regression Equation:")
+print(equation)
+print(model.summary())
+
+# Plotting the regression line graph for TAVG vs Coccidioidomycosis
+plt.figure(figsize=(10,6))
+
+# Scatter plot of actual vs predicted cases
+plt.scatter(analysis_df["TAVG"], y, color='blue', label="Actual cases")
+plt.plot(analysis_df["TAVG"], model.fittedvalues, color='red', label="Regression line")
+
+# Labels and title
+plt.xlabel("Average Temperature (TAVG)", fontsize=12)
+plt.ylabel("Coccidioidomycosis Cumulative Cases", fontsize=12)
+plt.title("Regression Line: TAVG vs Coccidioidomycosis", fontsize=14)
+
+# Show legend and plot
+plt.legend()
+plt.show()
+
