@@ -69,3 +69,4 @@ plt.title("Regression Line: TAVG vs Coccidioidomycosis", fontsize=14)
 plt.legend()
 plt.show()
 
+
