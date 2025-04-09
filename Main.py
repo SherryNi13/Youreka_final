@@ -1,8 +1,10 @@
+# Import necessary libraries
 import streamlit as st
 import pandas as pd
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
+import ace_tools as tools
 
 # Load the cleaned disease and climate data
 disease_data_path = "Coccidioidomycosis_Data_2014-2022.xlsx"
@@ -75,3 +77,72 @@ ax.legend()
 
 # Display the plot
 st.pyplot(fig)
+
+# Load the merged disease and climate dataset
+merged_data_path = "path/to/Merged_Disease_and_Climate_Data.csv"
+merged_df = pd.read_csv(merged_data_path)
+
+# Simple Regression: TAVG vs Coccidioidomycosis cases
+X_tavg = merged_df[["TAVG"]]
+y = merged_df["Coccidioidomycosis, Cum Current Year"]
+
+# Add constant for intercept
+X_tavg = sm.add_constant(X_tavg)
+
+# Fit the regression model
+model_tavg = sm.OLS(y, X_tavg).fit()
+
+# Simple Regression: PRCP vs Coccidioidomycosis cases
+X_prcp = merged_df[["PRCP"]]
+y = merged_df["Coccidioidomycosis, Cum Current Year"]
+
+# Add constant for intercept
+X_prcp = sm.add_constant(X_prcp)
+
+# Fit the regression model
+model_prcp = sm.OLS(y, X_prcp).fit()
+
+# Multiple Regression: TAVG and PRCP vs Coccidioidomycosis cases
+X_multiple = merged_df[["TAVG", "PRCP"]]
+y = merged_df["Coccidioidomycosis, Cum Current Year"]
+
+# Add constant for intercept
+X_multiple = sm.add_constant(X_multiple)
+
+# Fit the regression model
+model_multiple = sm.OLS(y, X_multiple).fit()
+
+# Get the regression summary for TAVG and PRCP
+model_tavg_summary = model_tavg.summary()
+model_prcp_summary = model_prcp.summary()
+model_multiple_summary = model_multiple.summary()
+
+# Display the regression results
+tools.display_dataframe_to_user(name="TAVG Regression Coefficients", dataframe=model_tavg.summary2().tables[1])
+tools.display_dataframe_to_user(name="PRCP Regression Coefficients", dataframe=model_prcp.summary2().tables[1])
+tools.display_dataframe_to_user(name="Multiple Regression Coefficients", dataframe=model_multiple.summary2().tables[1])
+
+# Plotting the regression line for TAVG vs Coccidioidomycosis cases
+plt.figure(figsize=(10, 6))
+plt.scatter(merged_df["TAVG"], y, color='blue', label="Actual cases")
+plt.plot(merged_df["TAVG"], model_tavg.fittedvalues, color='red', label="Regression line")
+plt.xlabel("Average Temperature (TAVG)", fontsize=12)
+plt.ylabel("Coccidioidomycosis Cumulative Cases", fontsize=12)
+plt.title("Simple Regression: TAVG vs Coccidioidomycosis", fontsize=14)
+plt.legend()
+plt.show()
+
+# Plotting the regression line for PRCP vs Coccidioidomycosis cases
+plt.figure(figsize=(10, 6))
+plt.scatter(merged_df["PRCP"], y, color='green', label="Actual cases")
+plt.plot(merged_df["PRCP"], model_prcp.fittedvalues, color='red', label="Regression line")
+plt.xlabel("Precipitation (PRCP)", fontsize=12)
+plt.ylabel("Coccidioidomycosis Cumulative Cases", fontsize=12)
+plt.title("Simple Regression: PRCP vs Coccidioidomycosis", fontsize=14)
+plt.legend()
+plt.show()
+
+# Print the regression summaries
+print("TAVG Regression Summary:\n", model_tavg_summary)
+print("PRCP Regression Summary:\n", model_prcp_summary)
+print("Multiple Regression Summary:\n", model_multiple_summary)
